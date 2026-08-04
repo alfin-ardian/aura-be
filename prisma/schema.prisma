@@ -1,0 +1,265 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum Occasion {
+  DAILY
+  WORK
+  PARTY
+  WEDDING
+  CASUAL
+}
+
+enum FinishPreference {
+  MATTE
+  NATURAL
+  DEWY
+  GLOSSY
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  role         Role      @default(USER)
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  profile          Profile?
+  refreshTokens    RefreshToken[]
+  passwordResets   PasswordResetToken[]
+  scans            Scan[]
+  recommendations  Recommendation[]
+  scanHistories    ScanHistory[]
+  wishlists        Wishlist[]
+
+  @@map("users")
+}
+
+/// User identity + beauty preference questionnaire (PRD Feature 2).
+model Profile {
+  id                String            @id @default(uuid()) @db.Uuid
+  userId            String            @unique @map("user_id") @db.Uuid
+  name              String?
+  gender            Gender?
+  age               Int?
+  /// Max budget in IDR (e.g. 300000)
+  budgetMax         Int?              @map("budget_max")
+  favoriteBrands    String[]          @default([]) @map("favorite_brands")
+  occasion          Occasion?
+  finishPreference  FinishPreference? @map("finish_preference")
+  /// Preferred makeup categories: Face, Lips, Eyes, Cheeks
+  preferredCategories String[]        @default([]) @map("preferred_categories")
+  allergies         String[]          @default([])
+  currentProducts   String[]          @default([]) @map("current_products")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+/// Makeup type taxonomy (Foundation, Concealer, …).
+model Ingredient {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  benefits    String[] @default([])
+  concerns    String[] @default([])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  products              ProductIngredient[]
+  recommendationLinks   RecommendationIngredient[]
+
+  @@map("ingredients")
+}
+
+model Product {
+  id            String   @id @default(uuid()) @db.Uuid
+  socoId        String?  @unique @map("soco_id")
+  brand         String
+  name          String
+  slug          String   @unique
+  description   String
+  imageUrl      String?  @map("image_url")
+  category      String   @default("Makeup")
+  subcategory   String?  @map("subcategory")
+  /// matte | natural | dewy | glossy (inferred or curated)
+  finish        String?
+  /// warm | cool | neutral | universal
+  undertoneMatch String? @map("undertone_match")
+  usage         String?
+  benefits      String[] @default([])
+  tags          String[] @default([])
+  rating        Float?   @map("rating")
+  reviewCount   Int      @default(0) @map("review_count")
+  minPrice      Int?     @map("min_price")
+  maxPrice      Int?     @map("max_price")
+  sourceUrl     String?  @map("source_url")
+  /// Affiliate / marketplace checkout URL (PRD Feature 5)
+  affiliateUrl  String?  @map("affiliate_url")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  ingredients           ProductIngredient[]
+  recommendationLinks   RecommendationProduct[]
+  wishlists             Wishlist[]
+
+  @@index([brand])
+  @@index([category])
+  @@index([subcategory])
+  @@index([finish])
+  @@index([reviewCount(sort: Desc)])
+  @@map("products")
+}
+
+model ProductIngredient {
+  productId    String @map("product_id") @db.Uuid
+  ingredientId String @map("ingredient_id") @db.Uuid
+
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@id([productId, ingredientId])
+  @@map("product_ingredients")
+}
+
+/// AI face analysis result (PRD Feature 1).
+model Scan {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  imagePath   String?  @map("image_path")
+  skinTone    String   @map("skin_tone")
+  undertone   String
+  faceShape   String   @map("face_shape")
+  confidence  Float
+  rawAiResponse Json   @map("raw_ai_response")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recommendation  Recommendation?
+  history         ScanHistory?
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("scans")
+}
+
+model Recommendation {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  scanId    String   @unique @map("scan_id") @db.Uuid
+  /// Explainable reasons + ranked matches (PRD Feature 3–4)
+  reasons   Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user        User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scan        Scan                         @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  ingredients RecommendationIngredient[]
+  products    RecommendationProduct[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("recommendations")
+}
+
+model RecommendationIngredient {
+  recommendationId String @map("recommendation_id") @db.Uuid
+  ingredientId     String @map("ingredient_id") @db.Uuid
+
+  recommendation Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  ingredient     Ingredient     @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@id([recommendationId, ingredientId])
+  @@map("recommendation_ingredients")
+}
+
+model RecommendationProduct {
+  recommendationId String @map("recommendation_id") @db.Uuid
+  productId        String @map("product_id") @db.Uuid
+  matchScore       Float  @default(0) @map("match_score")
+  explanations     String[] @default([])
+
+  recommendation Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  product        Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([recommendationId, productId])
+  @@map("recommendation_products")
+}
+
+model ScanHistory {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  scanId    String   @unique @map("scan_id") @db.Uuid
+  summary   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scan Scan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("scan_histories")
+}
+
+/// Saved favorite products (PRD Feature 6).
+model Wishlist {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("wishlists")
+}
