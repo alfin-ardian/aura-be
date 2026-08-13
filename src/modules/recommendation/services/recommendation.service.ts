@@ -36,6 +36,10 @@ function mapLinkedProduct(link: {
     usage: string | null;
     benefits: string[];
     tags: string[];
+    ingredientNames: string[];
+    uses: string[];
+    reviewSummary: string | null;
+    sources: string[];
     rating: number | null;
     reviewCount: number;
     minPrice: number | null;
@@ -58,6 +62,7 @@ function mapLinkedProduct(link: {
   return {
     id: p.id,
     socoId: p.socoId,
+    ownerId: null,
     brand: p.brand,
     name: p.name,
     slug: p.slug,
@@ -70,6 +75,10 @@ function mapLinkedProduct(link: {
     usage: p.usage,
     benefits: p.benefits,
     tags: p.tags,
+    ingredientNames: p.ingredientNames,
+    uses: p.uses,
+    reviewSummary: p.reviewSummary,
+    sources: p.sources,
     rating: p.rating,
     reviewCount: p.reviewCount,
     minPrice: p.minPrice,
@@ -105,10 +114,10 @@ export class RecommendationService {
   ): Promise<RecommendationPayloadDto & { recommendationId: string }> {
     await this.recommendationRepository.deleteByScanId(scanId);
 
-    const makeupTypeNames = this.ruleEngine.suggestMakeupTypes(analysis, preferences);
+    const productTypeNames = this.ruleEngine.suggestProductTypes(analysis, preferences);
     const [makeupTypes, candidates] = await Promise.all([
-      this.ingredientRepository.findByNames(makeupTypeNames),
-      this.productRepository.findByMakeupTypes(makeupTypeNames, 80),
+      this.ingredientRepository.findByNames(productTypeNames),
+      this.productRepository.findByMakeupTypes(productTypeNames, 160),
     ]);
 
     const ranked = this.ruleEngine.rankProducts(
@@ -124,7 +133,7 @@ export class RecommendationService {
       reasons: {
         analysis,
         preferences,
-        makeupTypeNames,
+        makeupTypeNames: productTypeNames,
         matches: ranked.map((m) => ({
           productId: m.product.id,
           matchScore: m.matchScore,

@@ -1,4 +1,4 @@
-﻿-- AlterTable
+-- AlterTable
 ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "soco_id" TEXT;
 ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "category" TEXT NOT NULL DEFAULT 'Makeup';
 ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "subcategory" TEXT;

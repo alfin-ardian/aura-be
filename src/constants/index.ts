@@ -15,8 +15,8 @@ export const HTTP_STATUS = {
 } as const;
 
 export const ROLES = {
-  USER: 'USER',
-  ADMIN: 'ADMIN',
+  SUPER_ADMIN: 'SUPER_ADMIN',
+  AFFILIATOR: 'AFFILIATOR',
 } as const;
 
 export type RoleName = (typeof ROLES)[keyof typeof ROLES];
@@ -44,6 +44,31 @@ export const MAKEUP_TYPES = {
   MASCARA: 'Mascara',
   EYESHADOW: 'Eyeshadow',
   BROW: 'Eyebrows',
+} as const;
+
+export const SKINCARE_TYPES = {
+  CLEANSER: 'Cleanser',
+  TONER: 'Toner',
+  ESSENCE: 'Essence',
+  SERUM: 'Serum',
+  MOISTURIZER: 'Moisturizer',
+  SUNSCREEN: 'Sunscreen',
+  EXFOLIATOR: 'Exfoliator',
+  MASK: 'Mask',
+  EYE_CARE: 'Eye Care',
+  ACNE_TREATMENT: 'Acne Treatment',
+} as const;
+
+/** Skin concerns used to tag skincare products and explain matches. */
+export const SKIN_CONCERNS = {
+  ACNE: 'acne',
+  OILY: 'oily',
+  DRY: 'dry',
+  SENSITIVE: 'sensitive',
+  DULL: 'dullness',
+  AGING: 'aging',
+  PORES: 'pores',
+  DARK_SPOTS: 'dark spots',
 } as const;
 
 export const TOP_N_RECOMMENDATIONS = 5;

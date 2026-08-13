@@ -9,6 +9,9 @@ export interface AnalysisDto {
   undertone: string;
   faceShape: string;
   confidence: number;
+  /** Present only when the AuraVision skin model produced the analysis. */
+  skinType?: string | null;
+  concerns?: string[];
 }
 
 export interface RankedProductDto extends ProductDto {

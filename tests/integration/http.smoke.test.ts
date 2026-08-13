@@ -12,11 +12,16 @@ import type { RecommendationService } from '@/modules/recommendation/services/re
 describe('HTTP surface (stubbed)', () => {
   const aiClient: IAiClient = {
     predict: vi.fn(async () => ({
-      skin_type: 'Oily' as const,
+      skin_tone: 'Light' as const,
+      undertone: 'Warm' as const,
+      face_shape: 'Oval' as const,
+      confidence: 0.91,
+      skin_type: 'Oily',
       acne: 82,
       oiliness: 70,
       redness: 25,
-      confidence: 0.91,
+      concerns: ['acne', 'oily'],
+      model_version: 'auravision-s1-test',
     })),
   };
 
@@ -26,6 +31,14 @@ describe('HTTP surface (stubbed)', () => {
     profileRepository: {} as AppContainer['profileRepository'],
     productRepository: {
       findAllActive: vi.fn(async () => []),
+      findOwned: vi.fn(async () => []),
+      search: vi.fn(async () => []),
+      findById: vi.fn(async () => null),
+      findBySlug: vi.fn(async () => null),
+      create: vi.fn(async () => ({})),
+      update: vi.fn(async () => ({})),
+      softDelete: vi.fn(async () => ({})),
+      hardDelete: vi.fn(async () => ({})),
       findByIngredientNames: vi.fn(async () => []),
       findByMakeupTypes: vi.fn(async () => []),
       findCandidatesForRecommendation: vi.fn(async () => []),
@@ -36,6 +49,19 @@ describe('HTTP surface (stubbed)', () => {
     ingredientRepository: {
       findAll: vi.fn(async () => []),
       findByNames: vi.fn(async () => []),
+      ensureByNames: vi.fn(async () => []),
+    },
+    productResearchClient: {
+      researchProduct: vi.fn(async () => [
+        {
+          brand: 'SKINTIFIC',
+          name: '5X Ceramide',
+          description: 'Moisturizer',
+          ingredients: [],
+          uses: [],
+          sources: [],
+        },
+      ]),
     },
     recommendationRepository: {} as AppContainer['recommendationRepository'],
     scanRepository: {} as AppContainer['scanRepository'],

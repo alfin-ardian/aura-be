@@ -15,6 +15,13 @@ export const aiPredictionSchema = z.object({
   undertone: z.enum(['Warm', 'Cool', 'Neutral']),
   face_shape: z.enum(['Oval', 'Round', 'Square', 'Heart', 'Oblong', 'Diamond']),
   confidence: z.number().min(0).max(1),
+  /** Skin fields are present only when the AuraVision model is loaded. */
+  skin_type: z.string().nullish(),
+  acne: z.number().int().min(0).max(100).nullish(),
+  oiliness: z.number().int().min(0).max(100).nullish(),
+  redness: z.number().int().min(0).max(100).nullish(),
+  concerns: z.array(z.string()).default([]),
+  model_version: z.string().default('heuristic-v1'),
 });
 
 export type AiPrediction = z.infer<typeof aiPredictionSchema>;
@@ -58,6 +65,8 @@ export class AiClient implements IAiClient {
         undertone: parsed.data.undertone,
         faceShape: parsed.data.face_shape,
         confidence: parsed.data.confidence,
+        modelVersion: parsed.data.model_version,
+        concerns: parsed.data.concerns,
       });
 
       return parsed.data;

@@ -3,11 +3,14 @@ import { HTTP_STATUS } from '../../../constants/index.js';
 import { sendCreated, sendSuccess } from '../../../shared/utils/api-response.js';
 import type { AuthService } from '../services/auth.service.js';
 import type {
+  ActivateAccountInput,
   ForgotPasswordInput,
   LoginInput,
   LogoutInput,
   RefreshTokenInput,
+  RegisterAffiliatorInput,
   RegisterInput,
+  ResendActivationInput,
   ResetPasswordInput,
 } from '../validators/auth.validator.js';
 
@@ -20,6 +23,23 @@ export class AuthController {
   register = async (req: Request, res: Response): Promise<void> => {
     const result = await this.authService.register(req.body as RegisterInput);
     sendCreated(res, result);
+  };
+
+  registerAffiliator = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.authService.registerAffiliator(
+      req.body as RegisterAffiliatorInput,
+    );
+    sendCreated(res, result);
+  };
+
+  activateAccount = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.authService.activateAccount(req.body as ActivateAccountInput);
+    sendSuccess(res, result);
+  };
+
+  resendActivation = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.authService.resendActivation(req.body as ResendActivationInput);
+    sendSuccess(res, result);
   };
 
   login = async (req: Request, res: Response): Promise<void> => {

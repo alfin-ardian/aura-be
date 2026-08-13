@@ -42,6 +42,10 @@ export interface RecommendationWithRelations extends Recommendation {
       usage: string | null;
       benefits: string[];
       tags: string[];
+      ingredientNames: string[];
+      uses: string[];
+      reviewSummary: string | null;
+      sources: string[];
       rating: number | null;
       reviewCount: number;
       minPrice: number | null;

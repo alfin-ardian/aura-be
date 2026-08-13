@@ -8,8 +8,8 @@ datasource db {
 }
 
 enum Role {
-  USER
-  ADMIN
+  SUPER_ADMIN
+  AFFILIATOR
 }
 
 enum Gender {
@@ -38,18 +38,24 @@ model User {
   id           String    @id @default(uuid()) @db.Uuid
   email        String    @unique
   passwordHash String    @map("password_hash")
-  role         Role      @default(USER)
+  role         Role      @default(AFFILIATOR)
   isActive     Boolean   @default(true) @map("is_active")
+  emailVerifiedAt DateTime? @map("email_verified_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   profile          Profile?
   refreshTokens    RefreshToken[]
   passwordResets   PasswordResetToken[]
+  emailActivations EmailActivationToken[]
   scans            Scan[]
   recommendations  Recommendation[]
   scanHistories    ScanHistory[]
   wishlists        Wishlist[]
+  products         Product[]
+  subscriptions    Subscription[]
+  payments         Payment[]
+  apiKeys          ApiKey[]
 
   @@map("users")
 }
@@ -59,6 +65,7 @@ model Profile {
   id                String            @id @default(uuid()) @db.Uuid
   userId            String            @unique @map("user_id") @db.Uuid
   name              String?
+  whatsapp          String?
   gender            Gender?
   age               Int?
   /// Max budget in IDR (e.g. 300000)
@@ -106,6 +113,37 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+model EmailActivationToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_activation_tokens")
+}
+
+/// Partner / white-label API keys. Raw key shown once; only hash is stored.
+model ApiKey {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  name       String
+  keyPrefix  String    @map("key_prefix")
+  keyHash    String    @unique @map("key_hash")
+  lastUsedAt DateTime? @map("last_used_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("api_keys")
+}
+
 /// Makeup type taxonomy (Foundation, Concealer, …).
 model Ingredient {
   id          String   @id @default(uuid()) @db.Uuid
@@ -126,6 +164,8 @@ model Ingredient {
 model Product {
   id            String   @id @default(uuid()) @db.Uuid
   socoId        String?  @unique @map("soco_id")
+  /// Affiliator who owns this catalog product (null = shared/system seed)
+  ownerId       String?  @map("owner_id") @db.Uuid
   brand         String
   name          String
   slug          String   @unique
@@ -140,6 +180,10 @@ model Product {
   usage         String?
   benefits      String[] @default([])
   tags          String[] @default([])
+  ingredientNames String[] @default([]) @map("ingredient_names")
+  uses          String[] @default([])
+  reviewSummary String?  @map("review_summary")
+  sources       String[] @default([])
   rating        Float?   @map("rating")
   reviewCount   Int      @default(0) @map("review_count")
   minPrice      Int?     @map("min_price")
@@ -151,6 +195,7 @@ model Product {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
+  owner                 User?                   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   ingredients           ProductIngredient[]
   recommendationLinks   RecommendationProduct[]
   wishlists             Wishlist[]
@@ -159,6 +204,7 @@ model Product {
   @@index([category])
   @@index([subcategory])
   @@index([finish])
+  @@index([ownerId])
   @@index([reviewCount(sort: Desc)])
   @@map("products")
 }
@@ -179,10 +225,21 @@ model Scan {
   id          String   @id @default(uuid()) @db.Uuid
   userId      String   @map("user_id") @db.Uuid
   imagePath   String?  @map("image_path")
+  guestName   String?  @map("guest_name")
   skinTone    String   @map("skin_tone")
   undertone   String
   faceShape   String   @map("face_shape")
   confidence  Float
+  /// Oily | Dry | Combination — from the AuraVision skin model.
+  skinType    String?  @map("skin_type")
+  /// Detected skin concerns (acne, oily, dry, sensitive, …) driving skincare matches.
+  concerns    String[] @default([])
+  /// Model that produced this analysis, e.g. auravision-s1-1a2b3c4d.
+  modelVersion String? @map("model_version")
+  /// Guest opted in to keep selfie for adaptive AI training.
+  trainingConsent Boolean @default(false) @map("training_consent")
+  /// referral | qr
+  channel     String   @default("referral")
   rawAiResponse Json   @map("raw_ai_response")
   createdAt   DateTime @default(now()) @map("created_at")
 
@@ -262,4 +319,48 @@ model Wishlist {
   @@unique([userId, productId])
   @@index([userId, createdAt(sort: Desc)])
   @@map("wishlists")
+}
+
+/// Affiliator scan-credit pack for the current billing period.
+model Subscription {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  planId      String   @map("plan_id")
+  planName    String   @map("plan_name")
+  priceIdr    Int      @map("price_idr")
+  quota       Int
+  periodStart DateTime @map("period_start")
+  periodEnd   DateTime @map("period_end")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([userId, isActive])
+  @@index([userId, periodEnd])
+  @@map("subscriptions")
+}
+
+/// Simulated checkout — no payment gateway yet.
+model Payment {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  subscriptionId String    @map("subscription_id") @db.Uuid
+  planId         String    @map("plan_id")
+  method         String
+  subtotal       Int
+  tax            Int
+  total          Int
+  invoiceNumber  String    @unique @map("invoice_number")
+  status         String    @default("paid")
+  paidAt         DateTime? @map("paid_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("payments")
 }

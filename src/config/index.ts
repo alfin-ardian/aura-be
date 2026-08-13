@@ -32,6 +32,23 @@ export const appConfig = {
   bcryptRounds: config.BCRYPT_ROUNDS,
   logLevel: config.LOG_LEVEL,
   redisUrl: config.REDIS_URL,
+  openai: {
+    apiKey: config.OPENAI_API_KEY,
+    model: config.OPENAI_MODEL,
+    timeoutMs: config.OPENAI_TIMEOUT_MS,
+  },
+  frontendUrl: config.FRONTEND_URL.replace(/\/$/, ''),
+  brevo: {
+    apiKey: config.BREVO_API_KEY,
+    senderEmail: config.BREVO_SENDER_EMAIL,
+    senderName: config.BREVO_SENDER_NAME,
+  },
+  midtrans: {
+    merchantId: config.MIDTRANS_MERCHANT_ID,
+    clientKey: config.MIDTRANS_CLIENT_KEY,
+    serverKey: config.MIDTRANS_SERVER_KEY,
+    isProduction: Boolean(config.MIDTRANS_IS_PRODUCTION),
+  },
 } as const;
 
 export type AppConfig = typeof appConfig;

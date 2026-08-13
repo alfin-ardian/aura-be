@@ -1,3 +1,4 @@
+import path from 'node:path';
 import express, { type Application } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -57,6 +58,14 @@ export function createApp(options: CreateAppOptions = {}): Application {
   app.get('/docs.json', (_req, res) => {
     res.json(swaggerSpec);
   });
+
+  app.use(
+    '/uploads',
+    express.static(path.resolve(process.cwd(), appConfig.upload.dir), {
+      maxAge: appConfig.isProduction ? '7d' : 0,
+      fallthrough: true,
+    }),
+  );
 
   app.use(createApiRouter(container));
 

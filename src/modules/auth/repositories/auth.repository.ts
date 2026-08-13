@@ -1,15 +1,28 @@
-import type { PasswordResetToken, PrismaClient, Role, User, RefreshToken } from '@prisma/client';
+import type {
+  EmailActivationToken,
+  PasswordResetToken,
+  PrismaClient,
+  Role,
+  User,
+  RefreshToken,
+} from '@prisma/client';
 import type { IAuthRepository } from '../interfaces/auth.repository.interface.js';
 
 export class AuthRepository implements IAuthRepository {
   constructor(private readonly db: PrismaClient) {}
 
-  findByEmail(email: string): Promise<User | null> {
-    return this.db.user.findUnique({ where: { email } });
+  findByEmail(email: string) {
+    return this.db.user.findUnique({
+      where: { email },
+      include: { profile: { select: { name: true, whatsapp: true } } },
+    });
   }
 
-  findById(id: string): Promise<User | null> {
-    return this.db.user.findUnique({ where: { id } });
+  findById(id: string) {
+    return this.db.user.findUnique({
+      where: { id },
+      include: { profile: { select: { name: true, whatsapp: true } } },
+    });
   }
 
   createUser(data: {
@@ -17,15 +30,19 @@ export class AuthRepository implements IAuthRepository {
     passwordHash: string;
     role?: Role;
     name?: string;
+    whatsapp?: string;
+    isActive?: boolean;
   }): Promise<User> {
     return this.db.user.create({
       data: {
         email: data.email,
         passwordHash: data.passwordHash,
-        role: data.role ?? 'USER',
+        role: data.role ?? 'AFFILIATOR',
+        isActive: data.isActive ?? true,
         profile: {
           create: {
             name: data.name ?? null,
+            whatsapp: data.whatsapp ?? null,
           },
         },
       },
@@ -91,6 +108,47 @@ export class AuthRepository implements IAuthRepository {
     await this.db.user.update({
       where: { id: userId },
       data: { passwordHash },
+    });
+  }
+
+  createEmailActivationToken(data: {
+    userId: string;
+    tokenHash: string;
+    expiresAt: Date;
+  }): Promise<EmailActivationToken> {
+    return this.db.emailActivationToken.create({ data });
+  }
+
+  findEmailActivationByHash(
+    tokenHash: string,
+  ): Promise<(EmailActivationToken & { user: User & { profile: { name: string | null } | null } }) | null> {
+    return this.db.emailActivationToken.findUnique({
+      where: { tokenHash },
+      include: { user: { include: { profile: { select: { name: true } } } } },
+    });
+  }
+
+  async markEmailActivationUsed(id: string): Promise<void> {
+    await this.db.emailActivationToken.update({
+      where: { id },
+      data: { usedAt: new Date() },
+    });
+  }
+
+  async activateUser(userId: string): Promise<User> {
+    return this.db.user.update({
+      where: { id: userId },
+      data: {
+        isActive: true,
+        emailVerifiedAt: new Date(),
+      },
+    });
+  }
+
+  async invalidateActiveEmailTokens(userId: string): Promise<void> {
+    await this.db.emailActivationToken.updateMany({
+      where: { userId, usedAt: null },
+      data: { usedAt: new Date() },
     });
   }
 }

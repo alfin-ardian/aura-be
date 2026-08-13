@@ -13,6 +13,7 @@ export class UserRepository implements IUserRepository {
         role: true,
         isActive: true,
         createdAt: true,
+        profile: { select: { name: true } },
       },
     });
   }

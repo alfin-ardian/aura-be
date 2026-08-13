@@ -10,6 +10,12 @@ import { createScanModule } from '../modules/scan/index.js';
 import { createHistoryModule } from '../modules/history/index.js';
 import { createHealthModule } from '../modules/health/index.js';
 import { createWishlistModule } from '../modules/wishlist/index.js';
+import { createAffiliatorModule } from '../modules/affiliator/index.js';
+import { createAnalyticsModule } from '../modules/analytics/index.js';
+import { createUsageModule } from '../modules/usage/index.js';
+import { createBillingModule } from '../modules/billing/index.js';
+import { createApiKeysModule } from '../modules/api-keys/index.js';
+import { createPartnerApiModule } from '../modules/partner-api/index.js';
 
 export function createApiRouter(container: AppContainer): Router {
   const router = Router();
@@ -17,9 +23,25 @@ export function createApiRouter(container: AppContainer): Router {
   router.use('/auth', createAuthModule({ authRepository: container.authRepository }));
   router.use('/users', createUserModule({ userRepository: container.userRepository }));
   router.use('/profile', createProfileModule({ profileRepository: container.profileRepository }));
+  router.use('/affiliators', createAffiliatorModule(container.db));
+  router.use('/api-keys', createApiKeysModule(container.db));
+  router.use(
+    '/v1',
+    createPartnerApiModule({
+      db: container.db,
+      aiClient: container.aiClient,
+    }),
+  );
+  router.use('/analytics', createAnalyticsModule(container.db));
+  router.use('/usage', createUsageModule(container.db));
+  router.use('/billing', createBillingModule(container.db));
   router.use(
     '/products',
-    createProductModule({ productRepository: container.productRepository }),
+    createProductModule({
+      productRepository: container.productRepository,
+      ingredientRepository: container.ingredientRepository,
+      productResearchClient: container.productResearchClient,
+    }),
   );
   router.use(
     '/ingredients',
@@ -44,6 +66,7 @@ export function createApiRouter(container: AppContainer): Router {
       historyRepository: container.historyRepository,
       recommendationService: container.recommendationService,
       preferenceReader: container.profileService,
+      userRepository: container.userRepository,
     }),
   );
   router.use(

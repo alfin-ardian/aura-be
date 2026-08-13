@@ -24,6 +24,9 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "prisma:studio": "prisma studio",
     "seed:makeup": "tsx scripts/scrape-soco-makeup.ts --replace --limit=100",
+    "seed:skincare": "tsx scripts/seed-id-skincare.ts --replace",
+    "seed:skincare:soco": "tsx scripts/scrape-soco-skincare.ts --replace --limit=100",
+    "backfill:images": "tsx scripts/backfill-product-images.ts",
     "scrape:soco": "tsx scripts/scrape-soco-makeup.ts",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down"

@@ -16,6 +16,7 @@ export class UserService {
       role: user.role,
       isActive: user.isActive,
       createdAt: user.createdAt.toISOString(),
+      name: user.profile?.name ?? null,
     };
   }
 }

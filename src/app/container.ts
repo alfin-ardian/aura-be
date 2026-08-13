@@ -1,5 +1,9 @@
 import type { PrismaClient } from '@prisma/client';
 import { AiClient, type IAiClient } from '../shared/services/ai-client.js';
+import {
+  OpenAiProductResearchClient,
+  type IProductResearchClient,
+} from '../shared/services/openai-product-research.js';
 import { AuthRepository } from '../modules/auth/repositories/auth.repository.js';
 import { UserRepository } from '../modules/user/repositories/user.repository.js';
 import { ProfileRepository } from '../modules/profile/repositories/profile.repository.js';
@@ -28,6 +32,7 @@ export interface AppContainer {
   historyRepository: HistoryRepository;
   ruleEngine: RecommendationRuleEngine;
   aiClient: IAiClient;
+  productResearchClient: IProductResearchClient;
   recommendationService: RecommendationService;
 }
 
@@ -59,6 +64,7 @@ export function createContainer(db: PrismaClient, aiClient?: IAiClient): AppCont
     historyRepository: new HistoryRepository(db),
     ruleEngine,
     aiClient: aiClient ?? new AiClient(),
+    productResearchClient: new OpenAiProductResearchClient(),
     recommendationService,
   };
 }

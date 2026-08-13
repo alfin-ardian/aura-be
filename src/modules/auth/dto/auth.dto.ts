@@ -9,6 +9,7 @@ export interface AuthUserDto {
   id: string;
   email: string;
   role: string;
+  name: string | null;
 }
 
 export interface AuthResponseDto {

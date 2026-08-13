@@ -5,11 +5,14 @@ import { AuthController } from './controllers/auth.controller.js';
 import { AuthService } from './services/auth.service.js';
 import type { IAuthRepository } from './interfaces/auth.repository.interface.js';
 import {
+  activateAccountSchema,
   forgotPasswordSchema,
   loginSchema,
   logoutSchema,
   refreshTokenSchema,
+  registerAffiliatorSchema,
   registerSchema,
+  resendActivationSchema,
   resetPasswordSchema,
 } from './validators/auth.validator.js';
 
@@ -22,17 +25,28 @@ export function createAuthModule(deps: AuthModuleDeps): Router {
   const controller = new AuthController(service);
   const router = Router();
 
-  /**
-   * @openapi
-   * /auth/register:
-   *   post:
-   *     tags: [Auth]
-   *     summary: Register a new user
-   */
   router.post(
     '/register',
     validateRequest(registerSchema),
     asyncHandler(controller.register),
+  );
+
+  router.post(
+    '/register-affiliator',
+    validateRequest(registerAffiliatorSchema),
+    asyncHandler(controller.registerAffiliator),
+  );
+
+  router.post(
+    '/activate',
+    validateRequest(activateAccountSchema),
+    asyncHandler(controller.activateAccount),
+  );
+
+  router.post(
+    '/resend-activation',
+    validateRequest(resendActivationSchema),
+    asyncHandler(controller.resendActivation),
   );
 
   router.post('/login', validateRequest(loginSchema), asyncHandler(controller.login));
