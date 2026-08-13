@@ -1,4 +1,5 @@
-import axios from 'axios';
+import axios, { type AxiosError } from 'axios';
+import https from 'node:https';
 import { appConfig } from '../../config/index.js';
 import { logger } from '../utils/logger.js';
 
@@ -8,6 +9,22 @@ export interface SendEmailInput {
   subject: string;
   htmlContent: string;
   textContent?: string;
+}
+
+/** Force IPv4 — many VPS hosts advertise broken IPv6; Brevo AAAA then times out. */
+const brevoHttpsAgent = new https.Agent({ family: 4, keepAlive: true });
+
+const MAX_ATTEMPTS = 3;
+
+function isRetryable(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false;
+  const err = error as AxiosError;
+  const code = err.code ?? '';
+  if (['ECONNRESET', 'ETIMEDOUT', 'ECONNABORTED', 'ENETUNREACH', 'EAI_AGAIN'].includes(code)) {
+    return true;
+  }
+  const status = err.response?.status;
+  return status === 429 || (typeof status === 'number' && status >= 500);
 }
 
 /**
@@ -24,34 +41,48 @@ export async function sendTransactionalEmail(input: SendEmailInput): Promise<boo
     return false;
   }
 
-  try {
-    await axios.post(
-      'https://api.brevo.com/v3/smtp/email',
-      {
-        sender: { email: senderEmail, name: senderName },
-        to: [{ email: input.toEmail, name: input.toName || input.toEmail }],
-        subject: input.subject,
-        htmlContent: input.htmlContent,
-        textContent: input.textContent,
-      },
-      {
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json',
-          'api-key': apiKey,
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    try {
+      await axios.post(
+        'https://api.brevo.com/v3/smtp/email',
+        {
+          sender: { email: senderEmail, name: senderName },
+          to: [{ email: input.toEmail, name: input.toName || input.toEmail }],
+          subject: input.subject,
+          htmlContent: input.htmlContent,
+          textContent: input.textContent,
         },
-        timeout: 15_000,
-      },
-    );
-    logger.info('Brevo email sent', { to: input.toEmail, subject: input.subject });
-    return true;
-  } catch (error) {
-    logger.error('Brevo email failed', {
-      to: input.toEmail,
-      error: error instanceof Error ? error.message : 'unknown',
-    });
-    throw error;
+        {
+          headers: {
+            accept: 'application/json',
+            'content-type': 'application/json',
+            'api-key': apiKey,
+          },
+          timeout: 20_000,
+          httpsAgent: brevoHttpsAgent,
+          // Prefer IPv4 at the axios/request layer as well.
+          family: 4,
+        },
+      );
+      logger.info('Brevo email sent', { to: input.toEmail, subject: input.subject, attempt });
+      return true;
+    } catch (error) {
+      lastError = error;
+      logger.error('Brevo email failed', {
+        to: input.toEmail,
+        attempt,
+        error: error instanceof Error ? error.message : 'unknown',
+      });
+      if (attempt < MAX_ATTEMPTS && isRetryable(error)) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+        continue;
+      }
+      throw error;
+    }
   }
+
+  throw lastError instanceof Error ? lastError : new Error('Brevo email failed');
 }
 
 export function buildActivationEmail(params: {
