@@ -234,6 +234,10 @@ model Scan {
   skinType    String?  @map("skin_type")
   /// Detected skin concerns (acne, oily, dry, sensitive, …) driving skincare matches.
   concerns    String[] @default([])
+  /// 0–100 AuraVision scores (kept in DB from init migration).
+  acne        Int      @default(0)
+  oiliness    Int      @default(0)
+  redness     Int      @default(0)
   /// Model that produced this analysis, e.g. auravision-s1-1a2b3c4d.
   modelVersion String? @map("model_version")
   /// Guest opted in to keep selfie for adaptive AI training.

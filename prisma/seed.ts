@@ -372,6 +372,9 @@ async function seedDemoLeads(): Promise<void> {
         confidence: guest.confidence,
         skinType: guest.skinType,
         concerns: guest.concerns,
+        acne: guest.concerns.includes('acne') ? 70 : 25,
+        oiliness: guest.concerns.includes('oily') ? 70 : 45,
+        redness: guest.concerns.includes('sensitive') ? 70 : 30,
         channel: index % 3 === 0 ? 'qr' : 'referral',
         rawAiResponse: {
           skin_tone: guest.skinTone,
