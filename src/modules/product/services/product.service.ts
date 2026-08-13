@@ -12,6 +12,8 @@ import type {
 } from '../../../shared/services/openai-product-research.js';
 import {
   attachSocoImages,
+  normalizeProductName,
+  scoreProductName,
   searchSocoCatalog,
   type SocoCatalogHit,
 } from '../../../shared/services/soco-catalog.js';
@@ -34,6 +36,8 @@ export interface ProductActor {
   role: RoleName | string;
 }
 
+export type ProductResearchSource = 'database' | 'soco' | 'ai_research' | 'mixed';
+
 export interface CatalogProduct {
   id: string;
   brand: string;
@@ -51,6 +55,8 @@ export interface CatalogProduct {
   isActive: boolean;
   ownerId: string | null;
   owned: boolean;
+  /** Where this row came from during /products/research. */
+  origin?: Exclude<ProductResearchSource, 'mixed'>;
 }
 
 export class ProductService {
@@ -193,22 +199,35 @@ export class ProductService {
   }
 
   async research(input: ResearchProductInput, actor: ProductActor) {
-    const existing = await this.productRepository.search(input.query, { limit: 12 });
-    if (existing.length > 0) {
-      return {
-        source: 'database' as const,
-        query: input.query,
-        products: existing.map((item) => this.toCatalog(item, actor.id)),
-      };
-    }
+    const [existing, socoHits] = await Promise.all([
+      this.productRepository.search(input.query, { limit: 12 }),
+      searchSocoCatalog(input.query, 12).catch(() => [] as SocoCatalogHit[]),
+    ]);
 
-    const socoHits = await searchSocoCatalog(input.query, 12);
-    if (socoHits.length > 0) {
+    const dbProducts = existing.map((item) => ({
+      ...this.toCatalog(item, actor.id),
+      origin: 'database' as const,
+    }));
+
+    const socoProducts = socoHits
+      .filter((hit) => !this.isDuplicateOfExisting(hit, existing))
+      .map((item, index) => ({
+        ...this.toSocoDraft(item, index),
+        origin: 'soco' as const,
+      }));
+
+    const merged = [...dbProducts, ...socoProducts].slice(0, 20);
+    if (merged.length > 0) {
+      const source: ProductResearchSource =
+        dbProducts.length > 0 && socoProducts.length > 0
+          ? 'mixed'
+          : dbProducts.length > 0
+            ? 'database'
+            : 'soco';
       return {
-        source: 'soco' as const,
+        source,
         query: input.query,
-        saved: false,
-        products: socoHits.map((item, index) => this.toSocoDraft(item, index)),
+        products: merged,
       };
     }
 
@@ -229,7 +248,10 @@ export class ProductService {
         source: 'ai_research' as const,
         query: input.query,
         saved: false,
-        products: researchedList.map((item, index) => this.toResearchDraft(item, index)),
+        products: researchedList.map((item, index) => ({
+          ...this.toResearchDraft(item, index),
+          origin: 'ai_research' as const,
+        })),
       };
     }
 
@@ -258,8 +280,24 @@ export class ProductService {
       source: 'ai_research' as const,
       query: input.query,
       saved: true,
-      products: [this.toCatalog(saved, actor.id)],
+      products: [
+        {
+          ...this.toCatalog(saved, actor.id),
+          origin: 'ai_research' as const,
+        },
+      ],
     };
+  }
+
+  private isDuplicateOfExisting(hit: SocoCatalogHit, existing: ProductDto[]): boolean {
+    const hitKey = normalizeProductName(`${hit.brand} ${hit.name}`);
+    return existing.some((row) => {
+      const rowKey = normalizeProductName(`${row.brand} ${row.name}`);
+      if (hitKey && rowKey && (hitKey === rowKey || hitKey.includes(rowKey) || rowKey.includes(hitKey))) {
+        return true;
+      }
+      return scoreProductName(hit.name, row.name) >= 0.78;
+    });
   }
 
   async adopt(id: string, actor: ProductActor): Promise<ProductDto> {
