@@ -41,6 +41,7 @@ export interface UsageDto {
     priceIdr: number;
     scans: number;
     featured: boolean;
+    contactSales: boolean;
     description: string;
     active: boolean;
   }>;
@@ -190,6 +191,7 @@ export class UsageService {
         priceIdr: plan.priceIdr,
         scans: plan.scans,
         featured: plan.featured,
+        contactSales: plan.contactSales,
         description: plan.description,
         active: subscription?.planId === plan.id,
       })),
@@ -200,6 +202,9 @@ export class UsageService {
     const plan = getUsagePlan(input.planId);
     if (!plan) {
       throw new ValidationError('Unknown plan');
+    }
+    if (plan.contactSales) {
+      throw new ValidationError('Custom plan requires sales contact');
     }
 
     const now = new Date();

@@ -7,6 +7,7 @@ export const USAGE_PLANS = [
     priceIdr: 50_000,
     scans: 1_000,
     featured: false,
+    contactSales: false,
     validityDays: 30,
     description: 'Cocok untuk uji coba dan audiens kecil.',
   },
@@ -16,6 +17,7 @@ export const USAGE_PLANS = [
     priceIdr: 100_000,
     scans: 3_000,
     featured: true,
+    contactSales: false,
     validityDays: 30,
     description: 'Paling hemat untuk partner yang aktif setiap minggu.',
   },
@@ -25,8 +27,20 @@ export const USAGE_PLANS = [
     priceIdr: 200_000,
     scans: 7_000,
     featured: false,
+    contactSales: false,
     validityDays: 30,
     description: 'Untuk klinik, studio, dan partner volume tinggi.',
+  },
+  {
+    id: 'custom',
+    name: 'Custom',
+    priceIdr: 0,
+    scans: 0,
+    featured: false,
+    contactSales: true,
+    validityDays: 30,
+    description:
+      'Paket terbesar dengan kuota, branding, dan integrasi yang disesuaikan.',
   },
 ] as const;
 

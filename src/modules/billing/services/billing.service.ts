@@ -49,6 +49,7 @@ export interface BillingDto {
     priceIdr: number;
     scans: number;
     featured: boolean;
+    contactSales: boolean;
     description: string;
     active: boolean;
   }>;
@@ -244,6 +245,7 @@ export class BillingService {
         priceIdr: plan.priceIdr,
         scans: plan.scans,
         featured: plan.featured,
+        contactSales: plan.contactSales,
         description: plan.description,
         active: subscription?.planId === plan.id,
       })),

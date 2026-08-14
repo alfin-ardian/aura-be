@@ -12,6 +12,7 @@ describe('usage plans', () => {
 
   it('resolves known pack ids', () => {
     expect(getUsagePlan('growth')?.scans).toBe(3_000);
+    expect(getUsagePlan('custom')?.contactSales).toBe(true);
     expect(getUsagePlan('unknown')).toBeUndefined();
   });
 
